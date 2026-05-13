@@ -1,0 +1,80 @@
+<program> ::= <statement_list>
+
+<statement_list> ::= <statement>
+                   | <statement> <statement_list>                    
+
+<statement> ::= <create_stmt> ";"
+              | <select_stmt> ";"
+
+<create_stmt> ::= CREATE TABLE <identifier>
+                  "(" <column_def_list> ")"
+
+<column_def_list> ::=<column_def>
+                    | <column_def> "," <column_def_list>
+
+<column_def> ::= <identifier> <data_type>
+
+<data_type> ::= INT
+              | FLOAT
+              | VARCHAR "(" <positive_integer> ")"
+
+<select_stmt> ::= SELECT <select_list>
+                  FROM <identifier>
+                  <where_clause>
+                  <group_clause>
+                  <order_clause>
+                  <limit_clause>
+
+<select_list> ::= "*"
+                | <identifier_list>
+
+<identifier_list> ::= <identifier>
+                    | <identifier> "," <identifier_list>
+
+<where_clause> ::= WHERE <condition>
+                 | ε
+
+<group_clause> ::= GROUP BY <identifier_list>
+                 | ε
+
+<order_clause> ::= ORDER BY <identifier_list>
+                 | ε
+
+<limit_clause> ::= LIMIT <positive_integer>
+                 | ε
+
+<condition> ::= <condition> AND <condition>
+              | <condition> OR <condition>
+              | NOT <condition>
+              | "(" <condition> ")"
+              | <comparison>
+              | <in_expression>
+
+<comparison> ::= <identifier> <comparison_operator> <literal>
+
+<comparison_operator> ::= "="
+                        | "!="
+                        | "<"
+                        | ">"
+                        | "<="
+                        | ">="
+
+<in_expression> ::= <identifier> IN "(" <literal_list> ")"
+                  | <identifier> NOT IN "(" <literal_list> ")"
+
+<literal_list> ::= <literal>
+                 | <literal> "," <literal_list>
+
+<literal> ::= <integer_literal>
+            | <float_literal>
+            | <string_literal>
+
+<identifier> ::= letter (letter | digit | "_")*
+
+<integer_literal> ::= digit+ 
+                    |"-" digit+
+
+<float_literal> ::= digit+ "." digit+
+                  | "-" digit+ "." digit+
+
+<string_literal> ::= "'" characters "'"
