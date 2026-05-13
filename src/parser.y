@@ -1,58 +1,56 @@
 %{
 #include <stdio.h>
 #include <stdlib.h>
-
-extern int yylex();             /* dilonei oti h function yylex() yparxei sto lexer */
-extern int yylineno;            /* krataei current line numbes gia errors */
-
+extern int yylex();
+extern int yylineno;
 void yyerror(const char *s);
-
 int error_found = 0;
 %}
 
-%union {                        /* o parser metaferei values apo lexer se parser(metaferei kai to string px"user") */
+%union {
     char* str;
 }
 
 %token SELECT FROM WHERE GROUP ORDER BY LIMIT
 %token CREATE TABLE
 %token INT_TYPE FLOAT_TYPE VARCHAR
-
 %token AND OR NOT IN
 %token EQ NEQ GT LT GTE LTE
-
+%token MINUS
 %token LPAREN RPAREN
-%token COMMA
-%token SEMICOLON
-%token STAR
-
-%token <str> IDENTIFIER         /* to identifier exei string values */
+%token COMMA SEMICOLON STAR
+%token <str> IDENTIFIER
 %token <str> INT_LITERAL
 %token <str> FLOAT_LITERAL
 %token <str> STRING_LITERAL
 
-%%                              /* grammar rules */
+%left OR
+%left AND
+%right NOT
 
-program:                        /* start symbol */
+%%
+
+program:
     statement_list
     ;
 
-statement_list:                 /* epitrepei CREATE TABLE, SELECT... */
+statement_list:
       statement
     | statement_list statement
     ;
 
-statement:                      /* kathe statement teleiwnei me ; */
+statement:
       create_stmt SEMICOLON
     | select_stmt SEMICOLON
     ;
 
+/*    CREATE TABLE   */
 create_stmt:
     CREATE TABLE IDENTIFIER
     LPAREN column_def_list RPAREN
     ;
 
-column_def_list:                /* anagnorizei id int, name varchar... */
+column_def_list:
       column_def
     | column_def_list COMMA column_def
     ;
@@ -67,7 +65,8 @@ data_type:
     | VARCHAR LPAREN INT_LITERAL RPAREN
     ;
 
-select_stmt:                    /* checks tin seira */
+/*    SELECT    */
+select_stmt:
     SELECT select_list
     FROM IDENTIFIER
     where_clause
@@ -88,7 +87,7 @@ identifier_list:
 
 where_clause:
       WHERE condition
-    |                   /* optional */
+    |
     ;
 
 group_clause:
@@ -106,6 +105,7 @@ limit_clause:
     |
     ;
 
+/*    Conditions    */
 condition:
       condition AND condition
     | condition OR condition
@@ -120,20 +120,12 @@ comparison:
     ;
 
 comparison_operator:
-      EQ
-    | NEQ
-    | GT
-    | LT
-    | GTE
-    | LTE
+      EQ | NEQ | GT | LT | GTE | LTE
     ;
 
 in_expression:
-      IDENTIFIER IN
-      LPAREN literal_list RPAREN
-
-    | IDENTIFIER NOT IN
-      LPAREN literal_list RPAREN
+      IDENTIFIER IN LPAREN literal_list RPAREN
+    | IDENTIFIER NOT IN LPAREN literal_list RPAREN
     ;
 
 literal_list:
@@ -143,7 +135,9 @@ literal_list:
 
 literal:
       INT_LITERAL
+    | MINUS INT_LITERAL
     | FLOAT_LITERAL
+    | MINUS FLOAT_LITERAL
     | STRING_LITERAL
     ;
 
@@ -152,11 +146,7 @@ literal:
 void yyerror(const char *s)
 {
     error_found = 1;
-
-    printf("\n\nSyntax Error at line %d: %s\n",
-           yylineno,
-           s);
-
+    printf("\n\nSyntax Error at line %d: %s\n", yylineno, s);
     exit(1);
 }
 
@@ -164,26 +154,21 @@ int main(int argc, char **argv)
 {
     extern FILE *yyin;
 
-    if(argc != 2)
-    {
-        printf("Usage: myParser file.sql\n");
+    if (argc != 2) {
+        fprintf(stderr, "Usage: myParser file.sql\n");
         return 1;
     }
 
     yyin = fopen(argv[1], "r");
-
-    if(!yyin)
-    {
-        printf("Cannot open file %s\n", argv[1]);
+    if (!yyin) {
+        fprintf(stderr, "Cannot open file: %s\n", argv[1]);
         return 1;
     }
 
-    if(yyparse() == 0)
-    {
+    if (yyparse() == 0 && !error_found) {
         printf("\n\nInput is syntactically correct.\n");
     }
 
     fclose(yyin);
-
     return 0;
 }
