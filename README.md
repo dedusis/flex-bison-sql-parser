@@ -138,5 +138,7 @@
    
    COMPILE:
    
-     .\myParser.exe test.sql
-     .\myParser.exe invalid.sql
+     .\myParser.exe ..\tests\test.sql
+     .\myParser.exe ..\tests\invalid.sql
+     .\myParser.exe ..\tests\invalid2a.sql
+     
