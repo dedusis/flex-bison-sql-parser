@@ -3,9 +3,13 @@ CREATE TABLE users (
     name varchar(20)
 );
 
+CREATE TABLE users (name varchar(10));
+
 SELECT id, name
+GROUP BY name
 FROM users
 WHERE id >= 5
-GROUP BY name
 ORDER BY name
 LIMIT 10;
+
+Input is syntactically correct.

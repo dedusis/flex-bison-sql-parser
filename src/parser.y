@@ -1,6 +1,7 @@
 %{
 #include <stdio.h>
 #include <stdlib.h>
+#include "symtable.h"
 extern int yylex();
 extern int yylineno;
 void yyerror(const char *s);
@@ -47,6 +48,14 @@ statement:
 /*    CREATE TABLE   */
 create_stmt:
     CREATE TABLE IDENTIFIER
+    {
+        if (table_exists($3)) {
+            printf("\n\nSemantic Error at line %d: Table '%s' already exists.\n",
+                   yylineno, $3);
+            exit(1);
+        }
+        add_table($3);
+    }
     LPAREN column_def_list RPAREN
     ;
 
