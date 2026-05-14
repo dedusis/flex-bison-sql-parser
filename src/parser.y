@@ -6,6 +6,8 @@ extern int yylex();
 extern int yylineno;
 void yyerror(const char *s);
 int error_found = 0;
+
+static char *current_select_table = NULL;
 %}
 
 %union {
@@ -45,19 +47,16 @@ statement:
     | select_stmt SEMICOLON
     ;
 
-/* ============================================================
-   CREATE TABLE
-   ============================================================ */
 create_stmt:
     CREATE TABLE IDENTIFIER
     {
-        /* Έλεγχος 2a: το όνομα πίνακα πρέπει να είναι μοναδικό */
+        /* Έλεγχος 2a */
         if (table_exists($3)) {
             printf("\n\nSemantic Error at line %d: Table '%s' already exists.\n",
                    yylineno, $3);
             exit(1);
         }
-        add_table($3);  /* θέτει και τον current_table_idx */
+        add_table($3);
     }
     LPAREN column_def_list RPAREN
     ;
@@ -70,7 +69,7 @@ column_def_list:
 column_def:
     IDENTIFIER
     {
-        /* Έλεγχος 2c: το όνομα στήλης πρέπει να είναι μοναδικό μέσα στον πίνακα */
+        /* Έλεγχος 2c */
         if (column_exists_in_current($1)) {
             printf("\n\nSemantic Error at line %d: Column '%s' already exists in table '%s'.\n",
                    yylineno, $1, tables[current_table_idx].name);
@@ -87,19 +86,19 @@ data_type:
     | VARCHAR LPAREN INT_LITERAL RPAREN
     ;
 
-/* ============================================================
-   SELECT
-   ============================================================ */
 select_stmt:
     SELECT select_list
     FROM IDENTIFIER
     {
-        /* Έλεγχος 2b: ο πίνακας στο FROM πρέπει να έχει οριστεί με CREATE */
+        /* Έλεγχος 2b */
         if (!table_exists($4)) {
             printf("\n\nSemantic Error at line %d: Table '%s' has not been defined.\n",
                    yylineno, $4);
             exit(1);
         }
+        current_select_table = $4;
+        /* Έλεγχος 2d για τις στήλες του SELECT */
+        check_pending_cols(current_select_table);
     }
     where_clause
     group_clause
@@ -109,12 +108,19 @@ select_stmt:
 
 select_list:
       STAR
-    | identifier_list
+    | select_column_list
     ;
 
-identifier_list:
-      IDENTIFIER
-    | identifier_list COMMA IDENTIFIER
+select_column_list:
+      select_column
+    | select_column_list COMMA select_column
+    ;
+
+select_column:
+    IDENTIFIER
+    {
+        add_pending_col($1, yylineno);
+    }
     ;
 
 where_clause:
@@ -123,13 +129,29 @@ where_clause:
     ;
 
 group_clause:
-      GROUP BY identifier_list
+      GROUP BY checked_identifier_list
     |
     ;
 
 order_clause:
-      ORDER BY identifier_list
+      ORDER BY checked_identifier_list
     |
+    ;
+
+checked_identifier_list:
+      checked_identifier
+    | checked_identifier_list COMMA checked_identifier
+    ;
+
+checked_identifier:
+    IDENTIFIER
+    {
+        if (!column_exists_in_table(current_select_table, $1)) {
+            printf("\n\nSemantic Error at line %d: Column '%s' does not exist in table '%s'.\n",
+                   yylineno, $1, current_select_table);
+            exit(1);
+        }
+    }
     ;
 
 limit_clause:
@@ -137,9 +159,6 @@ limit_clause:
     |
     ;
 
-/* ============================================================
-   Conditions
-   ============================================================ */
 condition:
       condition AND condition
     | condition OR condition
@@ -150,7 +169,18 @@ condition:
     ;
 
 comparison:
-    IDENTIFIER comparison_operator literal
+    where_column comparison_operator literal
+    ;
+
+where_column:
+    IDENTIFIER
+    {
+        if (!column_exists_in_table(current_select_table, $1)) {
+            printf("\n\nSemantic Error at line %d: Column '%s' does not exist in table '%s'.\n",
+                   yylineno, $1, current_select_table);
+            exit(1);
+        }
+    }
     ;
 
 comparison_operator:
@@ -158,8 +188,8 @@ comparison_operator:
     ;
 
 in_expression:
-      IDENTIFIER IN LPAREN literal_list RPAREN
-    | IDENTIFIER NOT IN LPAREN literal_list RPAREN
+      where_column IN LPAREN literal_list RPAREN
+    | where_column NOT IN LPAREN literal_list RPAREN
     ;
 
 literal_list:
