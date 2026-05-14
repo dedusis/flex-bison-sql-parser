@@ -78,6 +78,14 @@ data_type:
 select_stmt:
     SELECT select_list
     FROM IDENTIFIER
+    {
+        /* Έλεγχος 2b: ο πίνακας στο FROM πρέπει να έχει οριστεί με CREATE */
+        if (!table_exists($4)) {
+            printf("\n\nSemantic Error at line %d: Table '%s' has not been defined.\n",
+                   yylineno, $4);
+            exit(1);
+        }
+    }
     where_clause
     group_clause
     order_clause
