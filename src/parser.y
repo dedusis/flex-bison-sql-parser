@@ -45,16 +45,19 @@ statement:
     | select_stmt SEMICOLON
     ;
 
-/*    CREATE TABLE   */
+/* ============================================================
+   CREATE TABLE
+   ============================================================ */
 create_stmt:
     CREATE TABLE IDENTIFIER
     {
+        /* Έλεγχος 2a: το όνομα πίνακα πρέπει να είναι μοναδικό */
         if (table_exists($3)) {
             printf("\n\nSemantic Error at line %d: Table '%s' already exists.\n",
                    yylineno, $3);
             exit(1);
         }
-        add_table($3);
+        add_table($3);  /* θέτει και τον current_table_idx */
     }
     LPAREN column_def_list RPAREN
     ;
@@ -65,7 +68,17 @@ column_def_list:
     ;
 
 column_def:
-    IDENTIFIER data_type
+    IDENTIFIER
+    {
+        /* Έλεγχος 2c: το όνομα στήλης πρέπει να είναι μοναδικό μέσα στον πίνακα */
+        if (column_exists_in_current($1)) {
+            printf("\n\nSemantic Error at line %d: Column '%s' already exists in table '%s'.\n",
+                   yylineno, $1, tables[current_table_idx].name);
+            exit(1);
+        }
+        add_column_to_current($1);
+    }
+    data_type
     ;
 
 data_type:
@@ -74,7 +87,9 @@ data_type:
     | VARCHAR LPAREN INT_LITERAL RPAREN
     ;
 
-/*    SELECT    */
+/* ============================================================
+   SELECT
+   ============================================================ */
 select_stmt:
     SELECT select_list
     FROM IDENTIFIER
@@ -122,7 +137,9 @@ limit_clause:
     |
     ;
 
-/*    Conditions    */
+/* ============================================================
+   Conditions
+   ============================================================ */
 condition:
       condition AND condition
     | condition OR condition
